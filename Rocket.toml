@@ -1,0 +1,2 @@
+[default.databases]
+postgres_db = {pool_size = 10}

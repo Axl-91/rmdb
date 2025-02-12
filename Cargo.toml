@@ -1,0 +1,20 @@
+[package]
+name = "rmdb"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+rocket = { version = "0.5.1", features = ["secrets", "json"] }
+serde = "1.0.217"
+tokio = {version = "1.43.0", features=["full"]}
+dotenv= "0.15.0"
+
+[dependencies.sqlx]
+version = "0.7"
+default-features = false
+features = ["macros", "migrate", "postgres", "runtime-tokio-rustls"]
+
+[dependencies.rocket_db_pools]
+version = "0.2.0"
+features = ["sqlx_postgres"]
+
