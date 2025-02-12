@@ -32,6 +32,8 @@ jobs:
       run: echo "DATABASE_URL=postgres://postgres:password@localhost:5432/my_db" >> $GITHUB_ENV
     - name: Install dependencies
       run: cargo install sqlx-cli
+    - name: Run migrations
+      run: sqlx migrate run
     - name: Prepare sqlx cache
       run: cargo sqlx prepare
     - name: Run fmt
