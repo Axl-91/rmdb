@@ -1,0 +1,3 @@
+# RmDB
+
+Project mostly used to test Rocket and SQLx on Rust...
