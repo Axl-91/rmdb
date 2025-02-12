@@ -16,6 +16,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    
+    - name: Set DATABASE_URL to dummy SQLite
+      run: echo "DATABASE_URL=sqlite://:memory:" >> $GITHUB_ENV
+    - name: Install dependencies
+      run: cargo install sqlx-cli
+    - name: Prepare sqlx cache
+      run: cargo sqlx prepare
     - name: Run fmt
       run: cargo fmt --all -- --check --verbose
     - name: Run Clippy
