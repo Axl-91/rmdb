@@ -47,6 +47,18 @@ async fn create(mut db: Connection<Db>, movie: Json<Movie>) -> Result<String, St
     }
 }
 
+#[get("/movies/<id>")]
+async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, String> {
+    let movie = sqlx::query_as!(Movie, "SELECT name, director FROM movies WHERE id = $1", id)
+        .fetch_one(&mut **db)
+        .await;
+
+    match movie {
+        Ok(movie) => Ok(Json(movie)),
+        Err(err) => Err(format!("Failed to fetch movie: {}", err)),
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
     dotenv::dotenv().ok();
@@ -58,5 +70,5 @@ fn rocket() -> _ {
 
     rocket::custom(figment)
         .attach(Db::init())
-        .mount("/", routes![home, index, create])
+        .mount("/", routes![home, index, create, show])
 }
