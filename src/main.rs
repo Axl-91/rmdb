@@ -31,6 +31,22 @@ async fn index(mut db: Connection<Db>) -> Json<Vec<Movie>> {
     Json(movies)
 }
 
+#[post("/movies", format = "json", data = "<movie>")]
+async fn create(mut db: Connection<Db>, movie: Json<Movie>) -> Result<String, String> {
+    let result = sqlx::query!(
+        "INSERT INTO movies(name, director) VALUES ($1, $2)",
+        movie.name,
+        movie.director
+    )
+    .execute(&mut **db)
+    .await;
+
+    match result {
+        Ok(_) => Ok("Item added successfully!".to_string()),
+        Err(err) => Err(format!("Failed to insert item: {}", err)),
+    }
+}
+
 #[launch]
 fn rocket() -> _ {
     dotenv::dotenv().ok();
@@ -42,5 +58,5 @@ fn rocket() -> _ {
 
     rocket::custom(figment)
         .attach(Db::init())
-        .mount("/", routes![home, index])
+        .mount("/", routes![home, index, create])
 }
