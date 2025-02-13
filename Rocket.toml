@@ -1,2 +1,5 @@
 [default.databases]
 postgres_db = {pool_size = 10}
+
+[default]
+template_dir = "static"

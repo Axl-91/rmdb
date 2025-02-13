@@ -2,11 +2,14 @@
 extern crate rocket;
 
 mod movies;
+use rocket::fs::{relative, FileServer};
+use rocket_dyn_templates::{context, Template};
 use std::env;
 
 #[get("/")]
-async fn home() -> &'static str {
-    "Hello, world"
+async fn home() -> Template {
+    let hello = "Hello, world".to_string();
+    Template::render("home", context! { message: hello })
 }
 
 #[launch]
@@ -19,6 +22,8 @@ fn rocket() -> _ {
     ));
 
     rocket::custom(figment)
-        .mount("/", routes![home])
+        .attach(Template::fairing())
         .attach(movies::stage())
+        .mount("/", FileServer::from(relative!("static")))
+        .mount("/", routes![home])
 }

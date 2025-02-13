@@ -1,10 +1,18 @@
-use rocket::{fairing::AdHoc, serde::json::Json};
+use rocket::{fairing::AdHoc, http::Status, serde::json::Json};
 use rocket_db_pools::{sqlx, Connection, Database};
 use serde::{Deserialize, Serialize};
+
+type ErrorResp = (Status, String);
 
 #[derive(Database)]
 #[database("postgres_db")]
 struct Db(sqlx::PgPool);
+
+#[derive(Serialize, Deserialize)]
+struct ErrorMessage {
+    message: String,
+    error: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Movie {
@@ -39,26 +47,32 @@ async fn create(mut db: Connection<Db>, movie: Json<Movie>) -> Result<String, St
 }
 
 #[get("/movies/<id>")]
-async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, String> {
+async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, ErrorResp> {
     let movie = sqlx::query_as!(Movie, "SELECT name, director FROM movies WHERE id = $1", id)
         .fetch_one(&mut **db)
         .await;
 
     match movie {
         Ok(movie) => Ok(Json(movie)),
-        Err(err) => Err(format!("Failed to fetch movie: {}", err)),
+        Err(err) => Err((
+            Status::NotFound,
+            format!("Failed to fetch movie: {:?}", err),
+        )),
     }
 }
 
 #[delete("/movies/<id>")]
-async fn delete(mut db: Connection<Db>, id: i32) -> Result<String, String> {
+async fn delete(mut db: Connection<Db>, id: i32) -> Result<String, ErrorResp> {
     let result = sqlx::query!("DELETE FROM movies WHERE id = $1", id)
         .execute(&mut **db)
         .await;
 
     match result {
         Ok(_) => Ok("Movie register deleted successfully".to_string()),
-        Err(err) => Err(format!("Failed to delete movie: {}", err)),
+        Err(err) => Err((
+            Status::NotFound,
+            format!("Failed to delete movie: {:?}", err),
+        )),
     }
 }
 
