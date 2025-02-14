@@ -17,17 +17,21 @@ struct ErrorMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Movie {
+    id: Option<i32>,
     name: Option<String>,
     director: Option<String>,
 }
 
-#[get("/movies")]
-async fn index(mut db: Connection<Db>) -> Template {
-    let movies = sqlx::query_as!(Movie, "SELECT name, director FROM movies")
+async fn get_all_movies(mut db: Connection<Db>) -> Vec<Movie> {
+    sqlx::query_as!(Movie, "SELECT id, name, director FROM movies")
         .fetch_all(&mut **db)
         .await
-        .unwrap();
+        .unwrap()
+}
 
+#[get("/movies")]
+async fn index(db: Connection<Db>) -> Template {
+    let movies = get_all_movies(db).await;
     Template::render("movies/index", context! { movies: movies })
 }
 
@@ -49,9 +53,13 @@ async fn create(mut db: Connection<Db>, movie: Json<Movie>) -> Result<String, St
 
 #[get("/movies/<id>")]
 async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, ErrorResp> {
-    let movie = sqlx::query_as!(Movie, "SELECT name, director FROM movies WHERE id = $1", id)
-        .fetch_one(&mut **db)
-        .await;
+    let movie = sqlx::query_as!(
+        Movie,
+        "SELECT id, name, director FROM movies WHERE id = $1",
+        id
+    )
+    .fetch_one(&mut **db)
+    .await;
 
     match movie {
         Ok(movie) => Ok(Json(movie)),
@@ -63,17 +71,22 @@ async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, ErrorResp>
 }
 
 #[delete("/movies/<id>")]
-async fn delete(mut db: Connection<Db>, id: i32) -> Result<String, ErrorResp> {
+async fn delete(mut db: Connection<Db>, id: i32) -> Template {
     let result = sqlx::query!("DELETE FROM movies WHERE id = $1", id)
         .execute(&mut **db)
         .await;
 
+    let movies = get_all_movies(db).await;
+
     match result {
-        Ok(_) => Ok("Movie register deleted successfully".to_string()),
-        Err(err) => Err((
-            Status::NotFound,
-            format!("Failed to delete movie: {:?}", err),
-        )),
+        Ok(_) => Template::render(
+            "movies/index",
+            context! {movies: movies, alert: "Movie deleted successfully"},
+        ),
+        Err(err) => Template::render(
+            "movies/index",
+            context! {movies: movies, alert: format!("Failed to delete movie: {}", err)},
+        ),
     }
 }
 

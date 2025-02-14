@@ -5,15 +5,24 @@
 		<table class="table table-hover table-bordered">
 			<thead>
 				<tr>
+					<th> ID </th>
 					<th> Name </th>
 					<th> Director </th>
+					<th style="width:250px"> Actions </th>
 				</tr>
 			</thead>
 			<tbody>
 				{% for movie in movies%}
 					<tr>
+						<td> {{ movie.id }} </td>
 						<td> {{ movie.name }} </td>
 						<td> {{ movie.director }} </td>
+						<td>
+							<form method="POST" action="/movies/{{ movie.id }}">
+								<input type="hidden" name="_method" value="delete" />
+								<a href="movies/edit/{{ movie.id }}" class="btn btn-outline-info">Edit</a>
+								<button type="submit" class="btn btn-outline-danger">Delete</button>
+							</form>
 					</tr>
 				{% endfor %}
 			</tbody>
