@@ -1,0 +1,9 @@
+{% extends "layouts/base" %}
+
+{% block content %}
+	<div class="px-5 py-5 mt-3 bg-body-tertiary border rounded-3 text-center">
+		<h1>Welcome to the RMDb!</h1>
+		<h4> Add, modify and delete movies as you like! </h4>
+	</div>
+{% endblock %}
+

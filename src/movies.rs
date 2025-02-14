@@ -1,5 +1,6 @@
 use rocket::{fairing::AdHoc, http::Status, serde::json::Json};
 use rocket_db_pools::{sqlx, Connection, Database};
+use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
 
 type ErrorResp = (Status, String);
@@ -21,13 +22,13 @@ struct Movie {
 }
 
 #[get("/movies")]
-async fn index(mut db: Connection<Db>) -> Json<Vec<Movie>> {
+async fn index(mut db: Connection<Db>) -> Template {
     let movies = sqlx::query_as!(Movie, "SELECT name, director FROM movies")
         .fetch_all(&mut **db)
         .await
         .unwrap();
 
-    Json(movies)
+    Template::render("movies/index", context! { movies: movies })
 }
 
 #[post("/movies", format = "json", data = "<movie>")]

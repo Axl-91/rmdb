@@ -24,6 +24,6 @@ fn rocket() -> _ {
     rocket::custom(figment)
         .attach(Template::fairing())
         .attach(movies::stage())
-        .mount("/", FileServer::from(relative!("static")))
+        .mount("/", FileServer::from(relative!("templates")))
         .mount("/", routes![home])
 }
