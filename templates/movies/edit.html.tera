@@ -1,0 +1,31 @@
+{% extends "layouts/base" %}
+
+{% block content %}	
+
+<div class="card mt-4">
+	<div class="card-header">
+		<div class="row">
+			<h4 class="col-md-9 mt-1">
+				<strong> Edit Movie </strong>
+			</h4>
+		</div>
+	</div>
+	<div class="card-body">
+		<form method="POST", action= "/movies/{{ movie.id }}">
+			<input type="hidden" name="_method" value="PUT" />
+			
+			<div class="mt-2">
+				<label class="form-label">Name:</label>
+				<input type ="text" name="name" class="form-control", value="{{ movie.name }}">
+			</div>
+			<div class="mt-2">
+				<label class="form-label">Director:</label>
+				<textarea name="director" class="form-control">{{ movie.director }}</textarea>
+			</div>
+			<div class="mt-4">
+				<button class="btn btn-success">Submit</button>
+			</div>
+		</form>
+	</div>
+</div>
+{% endblock %}

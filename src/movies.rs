@@ -1,6 +1,12 @@
-use rocket::{fairing::AdHoc, http::Status, serde::json::Json};
+use rocket::{
+    fairing::AdHoc,
+    form::Form,
+    http::{CookieJar, Status},
+    response::Redirect,
+    serde::json::Json,
+};
 use rocket_db_pools::{sqlx, Connection, Database};
-use rocket_dyn_templates::{context, Template};
+use rocket_dyn_templates::{context, tera, Template};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 
@@ -29,17 +35,42 @@ struct NewMovie {
     director: String,
 }
 
+#[derive(FromForm)]
+struct FormMovie {
+    name: String,
+    director: String,
+}
+
 async fn get_all_movies(mut db: Connection<Db>) -> Vec<Movie> {
-    sqlx::query_as!(Movie, "SELECT id, name, director FROM movies")
+    sqlx::query_as!(Movie, "SELECT id, name, director FROM movies ORDER BY name")
         .fetch_all(&mut **db)
         .await
         .unwrap()
 }
 
+async fn get_movie(mut db: Connection<Db>, id: Uuid) -> Result<Movie, sqlx::Error> {
+    sqlx::query_as!(
+        Movie,
+        "SELECT id, name, director FROM movies WHERE id = $1",
+        id
+    )
+    .fetch_one(&mut **db)
+    .await
+}
+
 #[get("/movies")]
-async fn index(db: Connection<Db>) -> Template {
+async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
+    let mut notice = None;
     let movies = get_all_movies(db).await;
-    Template::render("movies/index", context! { movies: movies })
+
+    let mut context = tera::Context::new();
+    context.insert("movies", &movies);
+
+    if let Some(cookie) = cookies.get("notice") {
+        notice = Some(cookie.value().to_string());
+    }
+
+    Template::render("movies/index", context! { movies: movies, notice: notice})
 }
 
 #[post("/movies", format = "json", data = "<movie>")]
@@ -61,15 +92,9 @@ async fn create(mut db: Connection<Db>, movie: Json<NewMovie>) -> Result<String,
 }
 
 #[get("/movies/<id>")]
-async fn show(mut db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> {
+async fn show(db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> {
     let uuid = Uuid::parse_str(&id).unwrap();
-    let movie = sqlx::query_as!(
-        Movie,
-        "SELECT id, name, director FROM movies WHERE id = $1",
-        uuid
-    )
-    .fetch_one(&mut **db)
-    .await;
+    let movie = get_movie(db, uuid).await;
 
     match movie {
         Ok(movie) => Ok(Json(movie)),
@@ -77,6 +102,43 @@ async fn show(mut db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorRe
             Status::NotFound,
             format!("Failed to fetch movie: {:?}", err),
         )),
+    }
+}
+
+#[get("/movies/edit/<id>")]
+async fn edit(db: Connection<Db>, id: &str) -> Template {
+    let uuid = Uuid::parse_str(id).unwrap();
+    let movie = get_movie(db, uuid).await.unwrap();
+
+    Template::render("movies/edit", context! {movie: movie})
+}
+
+#[put("/movies/<id>", data = "<form>")]
+async fn update(
+    mut db: Connection<Db>,
+    id: &str,
+    form: Form<FormMovie>,
+    cookies: &CookieJar<'_>,
+) -> Redirect {
+    let uuid = Uuid::parse_str(id).unwrap();
+
+    let result = sqlx::query!(
+        "UPDATE movies
+        SET name = $1, director = $2
+        WHERE id = $3",
+        form.name,
+        form.director,
+        uuid
+    )
+    .execute(&mut **db)
+    .await;
+
+    match result {
+        Ok(_) => {
+            cookies.add(("notice", "Movie edited Succefully"));
+            Redirect::to(uri!(index))
+        }
+        Err(_) => Redirect::to(uri!(index)),
     }
 }
 
@@ -105,6 +167,6 @@ pub fn stage() -> AdHoc {
     AdHoc::on_ignite("Movies Stage", |rocket| async {
         rocket
             .attach(Db::init())
-            .mount("/", routes![index, create, show, delete])
+            .mount("/", routes![index, create, show, edit, update, delete])
     })
 }
