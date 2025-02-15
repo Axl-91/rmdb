@@ -2,6 +2,7 @@ use rocket::{fairing::AdHoc, http::Status, serde::json::Json};
 use rocket_db_pools::{sqlx, Connection, Database};
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
+use sqlx::types::Uuid;
 
 type ErrorResp = (Status, String);
 
@@ -17,9 +18,15 @@ struct ErrorMessage {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Movie {
-    id: Option<i32>,
+    id: String,
     name: Option<String>,
     director: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct NewMovie {
+    name: String,
+    director: String,
 }
 
 async fn get_all_movies(mut db: Connection<Db>) -> Vec<Movie> {
@@ -36,9 +43,11 @@ async fn index(db: Connection<Db>) -> Template {
 }
 
 #[post("/movies", format = "json", data = "<movie>")]
-async fn create(mut db: Connection<Db>, movie: Json<Movie>) -> Result<String, String> {
+async fn create(mut db: Connection<Db>, movie: Json<NewMovie>) -> Result<String, String> {
+    let id = Uuid::new_v4();
     let result = sqlx::query!(
-        "INSERT INTO movies(name, director) VALUES ($1, $2)",
+        "INSERT INTO movies(id, name, director) VALUES ($1, $2, $3)",
+        id,
         movie.name,
         movie.director
     )
@@ -52,11 +61,12 @@ async fn create(mut db: Connection<Db>, movie: Json<Movie>) -> Result<String, St
 }
 
 #[get("/movies/<id>")]
-async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, ErrorResp> {
+async fn show(mut db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> {
+    let uuid = Uuid::parse_str(&id).unwrap();
     let movie = sqlx::query_as!(
         Movie,
         "SELECT id, name, director FROM movies WHERE id = $1",
-        id
+        uuid
     )
     .fetch_one(&mut **db)
     .await;
@@ -71,8 +81,9 @@ async fn show(mut db: Connection<Db>, id: i32) -> Result<Json<Movie>, ErrorResp>
 }
 
 #[delete("/movies/<id>")]
-async fn delete(mut db: Connection<Db>, id: i32) -> Template {
-    let result = sqlx::query!("DELETE FROM movies WHERE id = $1", id)
+async fn delete(mut db: Connection<Db>, id: String) -> Template {
+    let uuid = Uuid::parse_str(&id).unwrap();
+    let result = sqlx::query!("DELETE FROM movies WHERE id = $1", uuid)
         .execute(&mut **db)
         .await;
 

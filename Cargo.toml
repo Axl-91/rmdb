@@ -12,7 +12,7 @@ dotenv= "0.15.0"
 [dependencies.sqlx]
 version = "0.7"
 default-features = false
-features = ["macros", "migrate", "postgres", "runtime-tokio-rustls"]
+features = ["macros", "migrate", "postgres", "runtime-tokio-rustls", "uuid"]
 
 [dependencies.rocket_db_pools]
 version = "0.2.0"
@@ -22,3 +22,10 @@ features = ["sqlx_postgres"]
 version = "0.2.0"
 features = ["tera"]
 
+[dependencies.uuid]
+version = "1.13.1"
+features = [
+    "v4",                # Lets you generate random UUIDs
+    "fast-rng",          # Use a faster (but still sufficiently random) RNG
+    "macro-diagnostics", # Enable better diagnostics for compile-time UUIDs
+]

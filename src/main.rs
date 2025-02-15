@@ -8,8 +8,7 @@ use std::env;
 
 #[get("/")]
 async fn home() -> Template {
-    let hello = "Hello, world".to_string();
-    Template::render("home", context! { message: hello })
+    Template::render("home", context! {})
 }
 
 #[launch]
