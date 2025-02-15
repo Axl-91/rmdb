@@ -1,1 +1,12 @@
+<div class="mt-2">
+	<label class="form-label">Name:</label>
+	<input type ="text" name="name" class="form-control", value={%if movie%} "{{movie.name}}" {% endif %}>
+</div>
+<div class="mt-2">
+	<label class="form-label">Director:</label>
+	<textarea name="director" class="form-control">{{ movie.director }}</textarea>
+</div>
+<div class="mt-4">
+	<button class="btn btn-success">Submit</button>
+</div>
 

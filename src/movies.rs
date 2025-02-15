@@ -60,15 +60,14 @@ async fn get_movie(mut db: Connection<Db>, id: Uuid) -> Result<Movie, sqlx::Erro
 
 #[get("/movies")]
 async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
-    let mut notice = None;
     let movies = get_all_movies(db).await;
 
     let mut context = tera::Context::new();
     context.insert("movies", &movies);
 
-    if let Some(cookie) = cookies.get("notice") {
-        notice = Some(cookie.value().to_string());
-    }
+    let notice = cookies.get("notice").map(|n| n.value().to_string());
+
+    cookies.remove("notice");
 
     Template::render("movies/index", context! { movies: movies, notice: notice})
 }
@@ -154,11 +153,11 @@ async fn delete(mut db: Connection<Db>, id: String) -> Template {
     match result {
         Ok(_) => Template::render(
             "movies/index",
-            context! {movies: movies, alert: "Movie deleted successfully"},
+            context! {movies: movies, notice: "Movie deleted successfully"},
         ),
         Err(err) => Template::render(
             "movies/index",
-            context! {movies: movies, alert: format!("Failed to delete movie: {}", err)},
+            context! {movies: movies, notice: format!("Failed to delete movie: {}", err)},
         ),
     }
 }

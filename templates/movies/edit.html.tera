@@ -13,18 +13,7 @@
 	<div class="card-body">
 		<form method="POST", action= "/movies/{{ movie.id }}">
 			<input type="hidden" name="_method" value="PUT" />
-			
-			<div class="mt-2">
-				<label class="form-label">Name:</label>
-				<input type ="text" name="name" class="form-control", value="{{ movie.name }}">
-			</div>
-			<div class="mt-2">
-				<label class="form-label">Director:</label>
-				<textarea name="director" class="form-control">{{ movie.director }}</textarea>
-			</div>
-			<div class="mt-4">
-				<button class="btn btn-success">Submit</button>
-			</div>
+			{% include "movies/form" %}
 		</form>
 	</div>
 </div>
