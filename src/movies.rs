@@ -8,7 +8,7 @@ use rocket::{
 use rocket_db_pools::{sqlx, Connection};
 use rocket_dyn_templates::{context, tera, Template};
 use serde::{Deserialize, Serialize};
-use sqlx::types::Uuid;
+use sqlx::{postgres::PgQueryResult, types::Uuid};
 
 use crate::Db;
 
@@ -39,7 +39,7 @@ struct FormMovie {
     director: String,
 }
 
-async fn get_all_movies(mut db: Connection<Db>) -> Vec<Movie> {
+async fn get_movies(mut db: Connection<Db>) -> Vec<Movie> {
     sqlx::query_as!(Movie, "SELECT id, name, director FROM movies ORDER BY name")
         .fetch_all(&mut **db)
         .await
@@ -56,9 +56,29 @@ async fn get_movie(mut db: Connection<Db>, id: Uuid) -> Result<Movie, sqlx::Erro
     .await
 }
 
+async fn create_movie(
+    mut db: Connection<Db>,
+    name: &str,
+    director: &str,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let id = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO movies(id, name, director) VALUES ($1, $2, $3)",
+        id,
+        name,
+        director
+    )
+    .execute(&mut **db)
+    .await
+}
+
+// async fn update_movie() {}
+
+// async fn delete_movie() {}
+
 #[get("/")]
 async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
-    let movies = get_all_movies(db).await;
+    let movies = get_movies(db).await;
 
     let mut context = tera::Context::new();
     context.insert("movies", &movies);
@@ -70,22 +90,21 @@ async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
     Template::render("movies/index", context! { movies: movies, notice: notice})
 }
 
-#[post("/", format = "json", data = "<movie>")]
-async fn create(mut db: Connection<Db>, movie: Json<NewMovie>) -> Result<String, String> {
-    let id = Uuid::new_v4();
-    let result = sqlx::query!(
-        "INSERT INTO movies(id, name, director) VALUES ($1, $2, $3)",
-        id,
-        movie.name,
-        movie.director
-    )
-    .execute(&mut **db)
-    .await;
+#[get("/new")]
+async fn new() -> Template {
+    Template::render("movies/new", context! {})
+}
+
+#[put("/create", data = "<form>")]
+async fn create(db: Connection<Db>, form: Form<FormMovie>, cookies: &CookieJar<'_>) -> Redirect {
+    let result = create_movie(db, &form.name, &form.director).await;
 
     match result {
-        Ok(_) => Ok("Item added successfully!".to_string()),
-        Err(err) => Err(format!("Failed to insert item: {}", err)),
+        Ok(_) => cookies.add(("notice", "Movie created successfully")),
+        Err(err) => cookies.add(("notice", format!("Movie couldn't be created: {}", err))),
     }
+
+    Redirect::to(uri!("/movies"))
 }
 
 #[get("/<id>")]
@@ -131,12 +150,11 @@ async fn update(
     .await;
 
     match result {
-        Ok(_) => {
-            cookies.add(("notice", "Movie edited Succefully"));
-            Redirect::to(uri!("/movies"))
-        }
-        Err(_) => Redirect::to(uri!("/movies")),
+        Ok(_) => cookies.add(("notice", "Movie edited successfully")),
+        Err(err) => cookies.add(("notice", format!("Movie couldn't get updated: {}", err))),
     }
+
+    Redirect::to(uri!("/movies"))
 }
 
 #[delete("/<id>")]
@@ -146,7 +164,7 @@ async fn delete(mut db: Connection<Db>, id: String) -> Template {
         .execute(&mut **db)
         .await;
 
-    let movies = get_all_movies(db).await;
+    let movies = get_movies(db).await;
 
     match result {
         Ok(_) => Template::render(
@@ -164,7 +182,7 @@ pub fn stage() -> AdHoc {
     AdHoc::on_ignite("Movies Stage", |rocket| async {
         rocket.mount(
             "/movies",
-            routes![index, create, show, edit, update, delete],
+            routes![index, new, create, show, edit, update, delete],
         )
     })
 }

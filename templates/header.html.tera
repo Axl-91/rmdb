@@ -3,6 +3,7 @@
 		<a class="navbar-brand" href="/"> RMDb </a>
 		<ul class="navbar-nav me-auto mb-2 mb-lg-0"
 			<li class="nav-item">
+				<a class="nav-link" href="/movies/new"> New Movie </a>
 				<a class="nav-link" href="/movies"> List Movies </a>
 			</li>
 		</ul>
