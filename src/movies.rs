@@ -5,16 +5,14 @@ use rocket::{
     response::Redirect,
     serde::json::Json,
 };
-use rocket_db_pools::{sqlx, Connection, Database};
+use rocket_db_pools::{sqlx, Connection};
 use rocket_dyn_templates::{context, tera, Template};
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
 
-type ErrorResp = (Status, String);
+use crate::Db;
 
-#[derive(Database)]
-#[database("postgres_db")]
-struct Db(sqlx::PgPool);
+type ErrorResp = (Status, String);
 
 #[derive(Serialize, Deserialize)]
 struct ErrorMessage {
@@ -58,7 +56,7 @@ async fn get_movie(mut db: Connection<Db>, id: Uuid) -> Result<Movie, sqlx::Erro
     .await
 }
 
-#[get("/movies")]
+#[get("/")]
 async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
     let movies = get_all_movies(db).await;
 
@@ -72,7 +70,7 @@ async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
     Template::render("movies/index", context! { movies: movies, notice: notice})
 }
 
-#[post("/movies", format = "json", data = "<movie>")]
+#[post("/", format = "json", data = "<movie>")]
 async fn create(mut db: Connection<Db>, movie: Json<NewMovie>) -> Result<String, String> {
     let id = Uuid::new_v4();
     let result = sqlx::query!(
@@ -90,7 +88,7 @@ async fn create(mut db: Connection<Db>, movie: Json<NewMovie>) -> Result<String,
     }
 }
 
-#[get("/movies/<id>")]
+#[get("/<id>")]
 async fn show(db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> {
     let uuid = Uuid::parse_str(&id).unwrap();
     let movie = get_movie(db, uuid).await;
@@ -104,7 +102,7 @@ async fn show(db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> 
     }
 }
 
-#[get("/movies/edit/<id>")]
+#[get("/edit/<id>")]
 async fn edit(db: Connection<Db>, id: &str) -> Template {
     let uuid = Uuid::parse_str(id).unwrap();
     let movie = get_movie(db, uuid).await.unwrap();
@@ -112,7 +110,7 @@ async fn edit(db: Connection<Db>, id: &str) -> Template {
     Template::render("movies/edit", context! {movie: movie})
 }
 
-#[put("/movies/<id>", data = "<form>")]
+#[put("/<id>", data = "<form>")]
 async fn update(
     mut db: Connection<Db>,
     id: &str,
@@ -135,13 +133,13 @@ async fn update(
     match result {
         Ok(_) => {
             cookies.add(("notice", "Movie edited Succefully"));
-            Redirect::to(uri!(index))
+            Redirect::to(uri!("/movies"))
         }
-        Err(_) => Redirect::to(uri!(index)),
+        Err(_) => Redirect::to(uri!("/movies")),
     }
 }
 
-#[delete("/movies/<id>")]
+#[delete("/<id>")]
 async fn delete(mut db: Connection<Db>, id: String) -> Template {
     let uuid = Uuid::parse_str(&id).unwrap();
     let result = sqlx::query!("DELETE FROM movies WHERE id = $1", uuid)
@@ -164,8 +162,9 @@ async fn delete(mut db: Connection<Db>, id: String) -> Template {
 
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("Movies Stage", |rocket| async {
-        rocket
-            .attach(Db::init())
-            .mount("/", routes![index, create, show, edit, update, delete])
+        rocket.mount(
+            "/movies",
+            routes![index, create, show, edit, update, delete],
+        )
     })
 }

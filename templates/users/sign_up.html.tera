@@ -1,0 +1,21 @@
+{% extends "layouts/base" %}
+
+{% block content %}	
+
+<div class="card mt-4">
+	<div class="card-header">
+		<div class="row">
+			<h4 class="col-md-9 mt-1">
+				<strong> Sign Up </strong>
+			</h4>
+		</div>
+	</div>
+	<div class="card-body">
+		<form method="POST", action= "/users/sign_up">
+			<input type="hidden" name="_method" value="POST" />
+			{% include "users/form" %}
+		</form>
+	</div>
+</div>
+{% endblock %}
+
