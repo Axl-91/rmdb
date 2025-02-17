@@ -6,7 +6,7 @@ use rocket::{
     serde::json::Json,
 };
 use rocket_db_pools::{sqlx, Connection};
-use rocket_dyn_templates::{context, tera, Template};
+use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgQueryResult, types::Uuid};
 
@@ -72,9 +72,33 @@ async fn create_movie(
     .await
 }
 
-// async fn update_movie() {}
+async fn update_movie(
+    mut db: Connection<Db>,
+    id: &str,
+    name: &str,
+    director: &str,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let uuid = Uuid::parse_str(id).unwrap();
 
-// async fn delete_movie() {}
+    sqlx::query!(
+        "UPDATE movies
+        SET name = $1, director = $2
+        WHERE id = $3",
+        name,
+        director,
+        uuid
+    )
+    .execute(&mut **db)
+    .await
+}
+
+async fn delete_movie(mut db: Connection<Db>, id: &str) -> Result<PgQueryResult, sqlx::Error> {
+    let uuid = Uuid::parse_str(id).unwrap();
+
+    sqlx::query!("DELETE FROM movies WHERE id = $1", uuid)
+        .execute(&mut **db)
+        .await
+}
 
 #[get("/")]
 async fn index(
@@ -84,11 +108,9 @@ async fn index(
 ) -> Template {
     let movies = get_movies(db).await;
 
-    let mut context = tera::Context::new();
-    context.insert("movies", &movies);
-
+    // I'll check for notice (alerts) to show, as create/edit/delete all redirect to index with a notice
     let notice = cookies.get("notice").map(|n| n.value().to_string());
-
+    // After I store the notice to show I'll delete it from the cookies so it shows only one time
     cookies.remove("notice");
 
     Template::render(
@@ -108,7 +130,7 @@ async fn create(db: Connection<Db>, form: Form<FormMovie>, cookies: &CookieJar<'
 
     match result {
         Ok(_) => cookies.add(("notice", "Movie created successfully")),
-        Err(err) => cookies.add(("notice", format!("Movie couldn't be created: {}", err))),
+        Err(err) => cookies.add(("notice", format!("Failed to create movie: {:?}", err))),
     }
 
     Redirect::to(uri!("/movies"))
@@ -138,51 +160,27 @@ async fn edit(db: Connection<Db>, id: &str) -> Template {
 
 #[put("/<id>", data = "<form>")]
 async fn update(
-    mut db: Connection<Db>,
+    db: Connection<Db>,
     id: &str,
     form: Form<FormMovie>,
     cookies: &CookieJar<'_>,
 ) -> Redirect {
-    let uuid = Uuid::parse_str(id).unwrap();
-
-    let result = sqlx::query!(
-        "UPDATE movies
-        SET name = $1, director = $2
-        WHERE id = $3",
-        form.name,
-        form.director,
-        uuid
-    )
-    .execute(&mut **db)
-    .await;
-
-    match result {
+    match update_movie(db, id, &form.name, &form.director).await {
         Ok(_) => cookies.add(("notice", "Movie edited successfully")),
-        Err(err) => cookies.add(("notice", format!("Movie couldn't get updated: {}", err))),
+        Err(err) => cookies.add(("notice", format!("Failed to update movie: {:?}", err))),
     }
 
     Redirect::to(uri!("/movies"))
 }
 
 #[delete("/<id>")]
-async fn delete(mut db: Connection<Db>, id: String) -> Template {
-    let uuid = Uuid::parse_str(&id).unwrap();
-    let result = sqlx::query!("DELETE FROM movies WHERE id = $1", uuid)
-        .execute(&mut **db)
-        .await;
-
-    let movies = get_movies(db).await;
-
-    match result {
-        Ok(_) => Template::render(
-            "movies/index",
-            context! {movies: movies, notice: "Movie deleted successfully"},
-        ),
-        Err(err) => Template::render(
-            "movies/index",
-            context! {movies: movies, notice: format!("Failed to delete movie: {}", err)},
-        ),
+async fn delete(db: Connection<Db>, id: &str, cookies: &CookieJar<'_>) -> Redirect {
+    match delete_movie(db, id).await {
+        Ok(_) => cookies.add(("notice", "Movie deleted successfully")),
+        Err(err) => cookies.add(("notice", format!("Failed to delete movie: {:?}", err))),
     }
+
+    Redirect::to("/movies")
 }
 
 pub fn stage() -> AdHoc {

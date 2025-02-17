@@ -3,6 +3,7 @@ use rocket::{fairing::AdHoc, form::Form, get, http::CookieJar, response::Redirec
 use rocket_db_pools::Connection;
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgRow;
 use uuid::Uuid;
 
 use crate::{auth::generate_jwt, Db};
@@ -25,10 +26,13 @@ async fn sign_up() -> Template {
     Template::render("users/sign_up", context! {})
 }
 
-#[put("/sign_up", data = "<form>")]
-async fn register(mut db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
+async fn create_user(
+    mut db: Connection<Db>,
+    email: &str,
+    password: &str,
+) -> Result<PgRow, sqlx::Error> {
     let id = Uuid::new_v4();
-    let hashed_password = hash(&form.password, DEFAULT_COST).unwrap();
+    let hashed_password = hash(password, DEFAULT_COST).unwrap();
 
     let query = r#"
         INSERT INTO users (id, email, password_hash)
@@ -36,12 +40,23 @@ async fn register(mut db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
         RETURNING id
     "#;
 
-    let result = sqlx::query(query)
+    sqlx::query(query)
         .bind(id)
-        .bind(&form.email)
+        .bind(email)
         .bind(&hashed_password)
         .fetch_one(&mut **db)
-        .await;
+        .await
+}
+
+async fn get_user(mut db: Connection<Db>, email: &str) -> Result<User, sqlx::Error> {
+    sqlx::query_as!(User, "SELECT * FROM users WHERE email = $1", email,)
+        .fetch_one(&mut **db)
+        .await
+}
+
+#[put("/sign_up", data = "<form>")]
+async fn register(db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
+    let result = create_user(db, &form.email, &form.password).await;
 
     match result {
         Ok(_) => Redirect::temporary(uri!("/users/login")),
@@ -58,33 +73,31 @@ async fn sign_in() -> Template {
 }
 
 #[put("/sign_in", data = "<form>")]
-async fn login(
-    mut db: Connection<Db>,
-    form: Form<UserRequest>,
-    cookies: &CookieJar<'_>,
-) -> Redirect {
-    let user = sqlx::query_as!(User, "SELECT * FROM users WHERE email = $1", form.email,)
-        .fetch_one(&mut **db)
-        .await
-        .unwrap();
-
-    println!("Login with: {}", form.email);
-    if let Ok(true) = verify(&form.password, &user.password_hash) {
-        let token = generate_jwt(&user.email);
-        cookies.add_private(("jwt", token));
-        cookies.add(("notice", "User logged in correctly"));
-        Redirect::to(uri!("/movies"))
+async fn login(db: Connection<Db>, form: Form<UserRequest>, cookies: &CookieJar<'_>) -> Redirect {
+    if let Ok(user) = get_user(db, &form.email).await {
+        if let Ok(true) = verify(&form.password, &user.password_hash) {
+            let token = generate_jwt(&user.email);
+            cookies.add_private(("jwt", token));
+            cookies.add(("notice", "User logged in correctly"));
+            Redirect::to(uri!("/movies"))
+        } else {
+            cookies.add(("notice", "Password is incorrect"));
+            Redirect::to(uri!("/users/sign_in"))
+        }
     } else {
         cookies.add(("notice", "Invalid user"));
         Redirect::to(uri!("/users/sign_in"))
     }
 }
 
-// #[get("/log_out")]
-// fn logout() {}
+#[delete("/log_out")]
+fn logout(cookies: &CookieJar<'_>) -> Redirect {
+    cookies.remove_private("jwt");
+    Redirect::to(uri!("/"))
+}
 
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("Users Stage", |rocket| async {
-        rocket.mount("/users", routes![sign_up, sign_in, register, login])
+        rocket.mount("/users", routes![sign_up, sign_in, register, login, logout])
     })
 }
