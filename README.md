@@ -26,7 +26,5 @@ Might add more features later...
 </br>
 
 <p align="center">
-  <kbd>
-    <img align="center" alt="waving" width="400" src="https://github.com/Axl-91/rmdb/blob/main/static/images/ferris.png">
-  </kbd>
+    <img align="center" alt="ferris" width="400" src="https://github.com/Axl-91/rmdb/blob/main/static/images/ferris.png">
 </p>
