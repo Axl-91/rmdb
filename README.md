@@ -20,4 +20,5 @@ Might add more features later...
 
 1. Run ```docker compose up```
 2. Run migrations ```sqlx migrate run``` (requires ```sqlx-cli```)
-3. Run project ``` cargo run ```
+3. Create ```.env``` file (use ```.env.example``` for reference)
+4. Run project ``` cargo run ```
