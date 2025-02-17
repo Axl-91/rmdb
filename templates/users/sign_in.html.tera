@@ -6,16 +6,17 @@
 	<div class="card-header">
 		<div class="row">
 			<h4 class="col-md-9 mt-1">
-				<strong> Sign Up </strong>
+				<strong> Sign In </strong>
 			</h4>
 		</div>
 	</div>
 	<div class="card-body">
-		<form method="POST", action= "/users/sign_up">
+		<form method="POST", action= "/users/sign_in">
 			<input type="hidden" name="_method" value="PUT" />
 			{% include "users/form" %}
 		</form>
 	</div>
 </div>
 {% endblock %}
+
 

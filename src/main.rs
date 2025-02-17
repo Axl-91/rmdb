@@ -1,6 +1,8 @@
 #[macro_use]
 extern crate rocket;
 
+mod auth;
+mod middleware;
 mod movies;
 mod users;
 use rocket::fs::{relative, FileServer};

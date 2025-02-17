@@ -10,7 +10,7 @@ use rocket_dyn_templates::{context, tera, Template};
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgQueryResult, types::Uuid};
 
-use crate::Db;
+use crate::{middleware::AuthenticatedUser, Db};
 
 type ErrorResp = (Status, String);
 
@@ -77,7 +77,11 @@ async fn create_movie(
 // async fn delete_movie() {}
 
 #[get("/")]
-async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
+async fn index(
+    db: Connection<Db>,
+    cookies: &CookieJar<'_>,
+    auth_user: AuthenticatedUser,
+) -> Template {
     let movies = get_movies(db).await;
 
     let mut context = tera::Context::new();
@@ -87,7 +91,10 @@ async fn index(db: Connection<Db>, cookies: &CookieJar<'_>) -> Template {
 
     cookies.remove("notice");
 
-    Template::render("movies/index", context! { movies: movies, notice: notice})
+    Template::render(
+        "movies/index",
+        context! { movies: movies, notice: notice, user_email: auth_user.email},
+    )
 }
 
 #[get("/new")]

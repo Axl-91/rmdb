@@ -8,7 +8,12 @@
 			</li>
 		</ul>
 		<span class="navbar-text px-2">
-			<a class="btn btn-secondary btn-sm" href="/users/sign_up"> Sign Up </a>
+			{% if user_email %}
+				<a class="nav-link" href="#"> {{ user_email }} </a>
+			{% else %}
+				<a class="btn btn-secondary btn-sm" href="/users/sign_up"> Sign Up </a>
+				<a class="btn btn-secondary btn-sm" href="/users/sign_in"> Sign In </a>
+			{% endif %}
 		</span>
 	</div>
 </nav>
