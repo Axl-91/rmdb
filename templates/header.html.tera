@@ -9,7 +9,11 @@
 		</ul>
 		<span class="navbar-text px-2">
 			{% if user_email %}
-				<a class="nav-link" href="#"> {{ user_email }} </a>
+				<form class="text-center" method="POST" action="/users/logout">
+					<a class="nav-link" href="#"> {{ user_email }} </a>
+					<input type="hidden" name="_method" value="delete" />
+					<button type="submit"> Log out </button>
+				</form>
 			{% else %}
 				<a class="btn btn-secondary btn-sm" href="/users/sign_up"> Sign Up </a>
 				<a class="btn btn-secondary btn-sm" href="/users/sign_in"> Sign In </a>

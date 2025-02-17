@@ -39,6 +39,8 @@ struct FormMovie {
     director: String,
 }
 
+// DB FUNCTIONS
+
 async fn get_movies(mut db: Connection<Db>) -> Vec<Movie> {
     sqlx::query_as!(Movie, "SELECT id, name, director FROM movies ORDER BY name")
         .fetch_all(&mut **db)
@@ -100,6 +102,8 @@ async fn delete_movie(mut db: Connection<Db>, id: &str) -> Result<PgQueryResult,
         .await
 }
 
+// REQUEST FUNCTIONS
+
 #[get("/")]
 async fn index(
     db: Connection<Db>,
@@ -120,8 +124,8 @@ async fn index(
 }
 
 #[get("/new")]
-async fn new() -> Template {
-    Template::render("movies/new", context! {})
+async fn new(auth_user: AuthenticatedUser) -> Template {
+    Template::render("movies/new", context! {user_email: auth_user.email})
 }
 
 #[put("/create", data = "<form>")]
@@ -151,11 +155,14 @@ async fn show(db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> 
 }
 
 #[get("/edit/<id>")]
-async fn edit(db: Connection<Db>, id: &str) -> Template {
+async fn edit(db: Connection<Db>, id: &str, auth_user: AuthenticatedUser) -> Template {
     let uuid = Uuid::parse_str(id).unwrap();
     let movie = get_movie(db, uuid).await.unwrap();
 
-    Template::render("movies/edit", context! {movie: movie})
+    Template::render(
+        "movies/edit",
+        context! {movie: movie, user_email: auth_user.email},
+    )
 }
 
 #[put("/<id>", data = "<form>")]

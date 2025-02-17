@@ -21,10 +21,7 @@ pub struct UserRequest {
     pub password: String,
 }
 
-#[get("/sign_up")]
-async fn sign_up() -> Template {
-    Template::render("users/sign_up", context! {})
-}
+// DB FUNCTIONS
 
 async fn create_user(
     mut db: Connection<Db>,
@@ -54,12 +51,22 @@ async fn get_user(mut db: Connection<Db>, email: &str) -> Result<User, sqlx::Err
         .await
 }
 
+// REQUESTS FUNCTIONS
+
+#[get("/sign_up")]
+async fn sign_up(cookies: &CookieJar<'_>) -> Template {
+    let notice = cookies.get("notice").map(|n| n.value().to_string());
+    cookies.remove("notice");
+
+    Template::render("users/sign_up", context! {notice: notice})
+}
+
 #[put("/sign_up", data = "<form>")]
 async fn register(db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
     let result = create_user(db, &form.email, &form.password).await;
 
     match result {
-        Ok(_) => Redirect::temporary(uri!("/users/login")),
+        Ok(_) => Redirect::temporary(uri!("/users/sign_in")),
         Err(err) => {
             println!("{}", err);
             Redirect::to(uri!("/users/sign_up"))
@@ -68,8 +75,11 @@ async fn register(db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
 }
 
 #[get("/sign_in")]
-async fn sign_in() -> Template {
-    Template::render("users/sign_in", context! {})
+async fn sign_in(cookies: &CookieJar<'_>) -> Template {
+    let notice = cookies.get("notice").map(|n| n.value().to_string());
+    cookies.remove("notice");
+
+    Template::render("users/sign_in", context! {notice: notice})
 }
 
 #[put("/sign_in", data = "<form>")]
@@ -90,7 +100,7 @@ async fn login(db: Connection<Db>, form: Form<UserRequest>, cookies: &CookieJar<
     }
 }
 
-#[delete("/log_out")]
+#[delete("/logout")]
 fn logout(cookies: &CookieJar<'_>) -> Redirect {
     cookies.remove_private("jwt");
     Redirect::to(uri!("/"))

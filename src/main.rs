@@ -5,6 +5,7 @@ mod auth;
 mod middleware;
 mod movies;
 mod users;
+use middleware::AuthenticatedUser;
 use rocket::fs::{relative, FileServer};
 use rocket_db_pools::Database;
 use rocket_dyn_templates::{context, Template};
@@ -15,8 +16,8 @@ use std::env;
 struct Db(sqlx::PgPool);
 
 #[get("/")]
-async fn home() -> Template {
-    Template::render("home", context! {})
+async fn home(auth_user: AuthenticatedUser) -> Template {
+    Template::render("home", context! {user_email: auth_user.email})
 }
 
 #[launch]
