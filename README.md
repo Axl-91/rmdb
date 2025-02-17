@@ -22,3 +22,11 @@ Might add more features later...
 2. Run migrations ```sqlx migrate run``` (requires ```sqlx-cli```)
 3. Create ```.env``` file (use ```.env.example``` for reference)
 4. Run project ``` cargo run ```
+
+</br>
+
+<p align="center">
+  <kbd>
+    <img align="center" alt="waving" width="400" src="https://github.com/Axl-91/rmdb/blob/main/static/images/ferris.png">
+  </kbd>
+</p>
