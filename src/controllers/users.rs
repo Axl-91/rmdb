@@ -4,9 +4,8 @@ use rocket_db_pools::Connection;
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
 use sqlx::postgres::PgRow;
-use uuid::Uuid;
 
-use crate::{auth::generate_jwt, Db};
+use crate::{auth::jwt::generate_jwt, Db};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct User {
@@ -28,22 +27,17 @@ async fn create_user(
     email: &str,
     password: &str,
 ) -> Result<PgRow, sqlx::Error> {
-    let id = Uuid::new_v4();
-    let now = chrono::Utc::now().naive_utc();
     let hashed_password = hash(password, DEFAULT_COST).unwrap();
 
     let query = r#"
-        INSERT INTO users (id, email, password_hash, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO users (email, password_hash)
+        VALUES ($1, $2)
         RETURNING id
     "#;
 
     sqlx::query(query)
-        .bind(id)
         .bind(email)
         .bind(&hashed_password)
-        .bind(now)
-        .bind(now)
         .fetch_one(&mut **db)
         .await
 }

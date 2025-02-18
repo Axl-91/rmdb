@@ -4,7 +4,12 @@
 	<div class="px-5 py-5 mt-3 bg-body-tertiary border rounded-3 text-center">
 		<h1>{{ movie.name }}</h1>
 		<h4> Directed by: {{ movie.director }} </h4>
-		<h4> Avg Score: <h4>
+		<h4> Avg Score: -  <h4>
+		{% if movie.synopsis %}
+			</br>
+			<h4> Synopsis: <h4>
+			<p> {{movie.synopsis}} </p>
+		{% endif %}
 	</div>
 {% endblock %}
 

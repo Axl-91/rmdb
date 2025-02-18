@@ -2,10 +2,9 @@
 extern crate rocket;
 
 mod auth;
+mod controllers;
 mod middleware;
-mod movies;
-mod users;
-use middleware::AuthenticatedUser;
+use middleware::log_check::LoggedUser;
 use rocket::fs::{relative, FileServer};
 use rocket_db_pools::Database;
 use rocket_dyn_templates::{context, Template};
@@ -16,8 +15,8 @@ use std::env;
 struct Db(sqlx::PgPool);
 
 #[get("/")]
-async fn home(auth_user: AuthenticatedUser) -> Template {
-    Template::render("home", context! {user_email: auth_user.email})
+async fn home(logged_user: LoggedUser) -> Template {
+    Template::render("home", context! {user_email: logged_user.email})
 }
 
 #[launch]
@@ -32,8 +31,8 @@ fn rocket() -> _ {
     rocket::custom(figment)
         .attach(Template::fairing())
         .attach(Db::init())
-        .attach(movies::stage())
-        .attach(users::stage())
+        .attach(controllers::movies::stage())
+        .attach(controllers::users::stage())
         .mount("/", FileServer::from(relative!("templates")))
         .mount("/", routes![home])
 }

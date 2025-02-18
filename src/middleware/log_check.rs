@@ -6,15 +6,15 @@ use rocket::outcome::Outcome;
 use rocket::request::FromRequest;
 use serde::Serialize;
 
-use crate::auth::TokenClaims;
+use crate::auth::jwt::TokenClaims;
 
 #[derive(Serialize)]
-pub struct AuthenticatedUser {
+pub struct LoggedUser {
     pub email: Option<String>,
 }
 
 #[rocket::async_trait]
-impl<'r> FromRequest<'r> for AuthenticatedUser {
+impl<'r> FromRequest<'r> for LoggedUser {
     type Error = ();
 
     async fn from_request(
@@ -31,13 +31,13 @@ impl<'r> FromRequest<'r> for AuthenticatedUser {
             let validation = Validation::new(Algorithm::HS256);
 
             match decode::<TokenClaims>(&token, &decoding_key, &validation) {
-                Ok(token_data) => Outcome::Success(AuthenticatedUser {
+                Ok(token_data) => Outcome::Success(LoggedUser {
                     email: Some(token_data.claims.sub),
                 }),
-                Err(_) => Outcome::Success(AuthenticatedUser { email: None }),
+                Err(_) => Outcome::Success(LoggedUser { email: None }),
             }
         } else {
-            Outcome::Success(AuthenticatedUser { email: None })
+            Outcome::Success(LoggedUser { email: None })
         }
     }
 }
