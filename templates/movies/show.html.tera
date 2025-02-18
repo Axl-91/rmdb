@@ -1,0 +1,10 @@
+{% extends "layouts/base" %}
+
+{% block content %}
+	<div class="px-5 py-5 mt-3 bg-body-tertiary border rounded-3 text-center">
+		<h1>{{ movie.name }}</h1>
+		<h4> Directed by: {{ movie.director }} </h4>
+		<h4> Avg Score: <h4>
+	</div>
+{% endblock %}
+

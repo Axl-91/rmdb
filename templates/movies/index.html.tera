@@ -8,7 +8,7 @@
 					<th width=350px> ID </th>
 					<th> Name </th>
 					<th> Director </th>
-					<th width="200px"> Actions </th>
+					<th width="250px"> Actions </th>
 				</tr>
 			</thead>
 			<tbody>
@@ -20,6 +20,7 @@
 						<td>
 							<form method="POST" action="/movies/{{ movie.id }}">
 								<input type="hidden" name="_method" value="delete" />
+								<a href="movies/{{ movie.id }}" class="btn btn-outline-success">Show</a>
 								<a href="movies/edit/{{ movie.id }}" class="btn btn-outline-info">Edit</a>
 								<button type="submit" class="btn btn-outline-danger">Delete</button>
 							</form>

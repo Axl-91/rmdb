@@ -1,10 +1,4 @@
-use rocket::{
-    fairing::AdHoc,
-    form::Form,
-    http::{CookieJar, Status},
-    response::Redirect,
-    serde::json::Json,
-};
+use rocket::{fairing::AdHoc, form::Form, http::CookieJar, response::Redirect};
 use rocket_db_pools::{sqlx, Connection};
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
@@ -15,14 +9,6 @@ use sqlx::{
 
 use crate::{middleware::AuthenticatedUser, Db};
 
-type ErrorResp = (Status, String);
-
-#[derive(Serialize, Deserialize)]
-struct ErrorMessage {
-    message: String,
-    error: String,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct Movie {
     id: String,
@@ -30,13 +16,7 @@ struct Movie {
     director: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct NewMovie {
-    name: String,
-    director: String,
-}
-
-#[derive(FromForm)]
+#[derive(FromForm, Debug, Serialize, Deserialize)]
 struct FormMovie {
     name: String,
     director: String,
@@ -150,17 +130,11 @@ async fn create(db: Connection<Db>, form: Form<FormMovie>, cookies: &CookieJar<'
 }
 
 #[get("/<id>")]
-async fn show(db: Connection<Db>, id: String) -> Result<Json<Movie>, ErrorResp> {
+async fn show(db: Connection<Db>, id: String) -> Template {
     let uuid = Uuid::parse_str(&id).unwrap();
-    let movie = get_movie(db, uuid).await;
+    let movie = get_movie(db, uuid).await.unwrap();
 
-    match movie {
-        Ok(movie) => Ok(Json(movie)),
-        Err(err) => Err((
-            Status::NotFound,
-            format!("Failed to fetch movie: {:?}", err),
-        )),
-    }
+    Template::render("movies/show", context! {movie: movie})
 }
 
 #[get("/edit/<id>")]
