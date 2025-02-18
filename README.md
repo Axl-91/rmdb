@@ -1,7 +1,7 @@
 # RmDb
 ### Project in Rust with Rocket/SQLx/Tera
 
-The idea of the project is to have a database with movies, where users can give submit their ratings.
+The idea of the project is to have a database with movies, where users can give submit their scores (1 through 10).
 
 Might add more features later...
 
@@ -12,8 +12,8 @@ Might add more features later...
 - [x] ~~Add templates for Movies (create/edit/delete)~~
 - [x] ~~Add Users to DB~~
 - [x] ~~Create auth for Users~~
-- [ ] Add templates for Users (Sign/login/logout)
-- [ ] Add ratings to DB (user <--> movie)
+- [x] ~~Add templates for Users (Sign/login/logout)~~
+- [ ] Add Scores to DB (user <--> movie)
 - [ ] Add to templates the ability to rank the movies
 
 ### Instructions to run:
