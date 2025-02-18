@@ -29,11 +29,12 @@ async fn create_user(
     password: &str,
 ) -> Result<PgRow, sqlx::Error> {
     let id = Uuid::new_v4();
+    let now = chrono::Utc::now().naive_utc();
     let hashed_password = hash(password, DEFAULT_COST).unwrap();
 
     let query = r#"
-        INSERT INTO users (id, email, password_hash)
-        VALUES ($1, $2, $3)
+        INSERT INTO users (id, email, password_hash, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING id
     "#;
 
@@ -41,14 +42,20 @@ async fn create_user(
         .bind(id)
         .bind(email)
         .bind(&hashed_password)
+        .bind(now)
+        .bind(now)
         .fetch_one(&mut **db)
         .await
 }
 
 async fn get_user(mut db: Connection<Db>, email: &str) -> Result<User, sqlx::Error> {
-    sqlx::query_as!(User, "SELECT * FROM users WHERE email = $1", email,)
-        .fetch_one(&mut **db)
-        .await
+    sqlx::query_as!(
+        User,
+        "SELECT id, email, password_hash FROM users WHERE email = $1",
+        email,
+    )
+    .fetch_one(&mut **db)
+    .await
 }
 
 // REQUESTS FUNCTIONS

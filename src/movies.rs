@@ -8,7 +8,10 @@ use rocket::{
 use rocket_db_pools::{sqlx, Connection};
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
-use sqlx::{postgres::PgQueryResult, types::Uuid};
+use sqlx::{
+    postgres::PgQueryResult,
+    types::{chrono, Uuid},
+};
 
 use crate::{middleware::AuthenticatedUser, Db};
 
@@ -64,11 +67,15 @@ async fn create_movie(
     director: &str,
 ) -> Result<PgQueryResult, sqlx::Error> {
     let id = Uuid::new_v4();
+    let now = chrono::Utc::now().naive_utc();
+
     sqlx::query!(
-        "INSERT INTO movies(id, name, director) VALUES ($1, $2, $3)",
+        "INSERT INTO movies(id, name, director, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)",
         id,
         name,
-        director
+        director,
+        now,
+        now
     )
     .execute(&mut **db)
     .await
@@ -81,13 +88,15 @@ async fn update_movie(
     director: &str,
 ) -> Result<PgQueryResult, sqlx::Error> {
     let uuid = Uuid::parse_str(id).unwrap();
+    let now = chrono::Utc::now().naive_utc();
 
     sqlx::query!(
         "UPDATE movies
-        SET name = $1, director = $2
-        WHERE id = $3",
+        SET name = $1, director = $2, updated_at = $3
+        WHERE id = $4",
         name,
         director,
+        now,
         uuid
     )
     .execute(&mut **db)

@@ -15,7 +15,7 @@ chrono = "0.4.39"
 [dependencies.sqlx]
 version = "0.7"
 default-features = false
-features = ["macros", "migrate", "postgres", "runtime-tokio-rustls", "uuid"]
+features = ["macros", "migrate", "postgres", "runtime-tokio-rustls", "uuid", "chrono"]
 
 [dependencies.rocket_db_pools]
 version = "0.2.0"
