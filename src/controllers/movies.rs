@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{
     postgres::PgQueryResult,
     types::{chrono, Uuid},
+    PgConnection,
 };
 
 use crate::{middleware::log_check::LoggedUser, Db};
@@ -26,28 +27,28 @@ struct FormMovie {
 
 // DB FUNCTIONS
 
-async fn get_movies(mut db: Connection<Db>) -> Vec<Movie> {
+async fn get_movies(db: &mut PgConnection) -> Vec<Movie> {
     sqlx::query_as!(
         Movie,
         "SELECT id, name, director, synopsis FROM movies ORDER BY name"
     )
-    .fetch_all(&mut **db)
+    .fetch_all(db)
     .await
     .unwrap()
 }
 
-async fn get_movie(mut db: Connection<Db>, id: Uuid) -> Result<Movie, sqlx::Error> {
+async fn get_movie(db: &mut PgConnection, id: Uuid) -> Result<Movie, sqlx::Error> {
     sqlx::query_as!(
         Movie,
         "SELECT id, name, director, synopsis FROM movies WHERE id = $1",
         id
     )
-    .fetch_one(&mut **db)
+    .fetch_one(db)
     .await
 }
 
 async fn create_movie(
-    mut db: Connection<Db>,
+    db: &mut PgConnection,
     name: &str,
     director: &str,
     synopsis: &Option<String>,
@@ -58,12 +59,12 @@ async fn create_movie(
         director,
         synopsis.as_deref()
     )
-    .execute(&mut **db)
+    .execute(db)
     .await
 }
 
 async fn update_movie(
-    mut db: Connection<Db>,
+    db: &mut PgConnection,
     id: &str,
     name: &str,
     director: &str,
@@ -82,23 +83,28 @@ async fn update_movie(
         now,
         uuid
     )
-    .execute(&mut **db)
+    .execute(db)
     .await
 }
 
-async fn delete_movie(mut db: Connection<Db>, id: &str) -> Result<PgQueryResult, sqlx::Error> {
+async fn delete_movie(db: &mut PgConnection, id: &str) -> Result<PgQueryResult, sqlx::Error> {
     let uuid = Uuid::parse_str(id).unwrap();
 
     sqlx::query!("DELETE FROM movies WHERE id = $1", uuid)
-        .execute(&mut **db)
+        .execute(db)
         .await
 }
 
 // REQUEST FUNCTIONS
 
 #[get("/")]
-async fn index(db: Connection<Db>, cookies: &CookieJar<'_>, logged_user: LoggedUser) -> Template {
-    let movies = get_movies(db).await;
+async fn index(
+    mut db: Connection<Db>,
+    cookies: &CookieJar<'_>,
+    logged_user: LoggedUser,
+) -> Template {
+    let pg_connection = &mut **db;
+    let movies = get_movies(pg_connection).await;
 
     // I'll check for notice (alerts) to show, as create/edit/delete all redirect to index with a notice
     let notice = cookies.get("notice").map(|n| n.value().to_string());
@@ -117,8 +123,13 @@ async fn new(logged_user: LoggedUser) -> Template {
 }
 
 #[put("/create", data = "<form>")]
-async fn create(db: Connection<Db>, form: Form<FormMovie>, cookies: &CookieJar<'_>) -> Redirect {
-    let result = create_movie(db, &form.name, &form.director, &form.synopsis).await;
+async fn create(
+    mut db: Connection<Db>,
+    form: Form<FormMovie>,
+    cookies: &CookieJar<'_>,
+) -> Redirect {
+    let pg_connection = &mut **db;
+    let result = create_movie(pg_connection, &form.name, &form.director, &form.synopsis).await;
 
     match result {
         Ok(_) => cookies.add(("notice", "Movie created successfully")),
@@ -129,17 +140,21 @@ async fn create(db: Connection<Db>, form: Form<FormMovie>, cookies: &CookieJar<'
 }
 
 #[get("/<id>")]
-async fn show(db: Connection<Db>, id: String) -> Template {
+async fn show(mut db: Connection<Db>, id: String) -> Template {
+    let pg_connection = &mut **db;
     let uuid = Uuid::parse_str(&id).unwrap();
-    let movie = get_movie(db, uuid).await.unwrap();
+
+    let movie = get_movie(pg_connection, uuid).await.unwrap();
 
     Template::render("movies/show", context! {movie: movie})
 }
 
 #[get("/edit/<id>")]
-async fn edit(db: Connection<Db>, id: &str, logged_user: LoggedUser) -> Template {
+async fn edit(mut db: Connection<Db>, id: &str, logged_user: LoggedUser) -> Template {
+    let pg_connection = &mut **db;
     let uuid = Uuid::parse_str(id).unwrap();
-    let movie = get_movie(db, uuid).await.unwrap();
+
+    let movie = get_movie(pg_connection, uuid).await.unwrap();
 
     Template::render(
         "movies/edit",
@@ -149,12 +164,22 @@ async fn edit(db: Connection<Db>, id: &str, logged_user: LoggedUser) -> Template
 
 #[put("/<id>", data = "<form>")]
 async fn update(
-    db: Connection<Db>,
+    mut db: Connection<Db>,
     id: &str,
     form: Form<FormMovie>,
     cookies: &CookieJar<'_>,
 ) -> Redirect {
-    match update_movie(db, id, &form.name, &form.director, &form.synopsis).await {
+    let pg_connection = &mut **db;
+
+    match update_movie(
+        pg_connection,
+        id,
+        &form.name,
+        &form.director,
+        &form.synopsis,
+    )
+    .await
+    {
         Ok(_) => cookies.add(("notice", "Movie edited successfully")),
         Err(err) => cookies.add(("notice", format!("Failed to update movie: {:?}", err))),
     }
@@ -163,8 +188,10 @@ async fn update(
 }
 
 #[delete("/<id>")]
-async fn delete(db: Connection<Db>, id: &str, cookies: &CookieJar<'_>) -> Redirect {
-    match delete_movie(db, id).await {
+async fn delete(mut db: Connection<Db>, id: &str, cookies: &CookieJar<'_>) -> Redirect {
+    let pg_connection = &mut **db;
+
+    match delete_movie(pg_connection, id).await {
         Ok(_) => cookies.add(("notice", "Movie deleted successfully")),
         Err(err) => cookies.add(("notice", format!("Failed to delete movie: {:?}", err))),
     }

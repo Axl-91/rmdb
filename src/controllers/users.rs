@@ -3,7 +3,7 @@ use rocket::{fairing::AdHoc, form::Form, get, http::CookieJar, response::Redirec
 use rocket_db_pools::Connection;
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgRow;
+use sqlx::{postgres::PgRow, PgConnection};
 
 use crate::{auth::jwt::generate_jwt, Db};
 
@@ -23,7 +23,7 @@ pub struct UserRequest {
 // DB FUNCTIONS
 
 async fn create_user(
-    mut db: Connection<Db>,
+    db: &mut PgConnection,
     email: &str,
     password: &str,
 ) -> Result<PgRow, sqlx::Error> {
@@ -38,17 +38,17 @@ async fn create_user(
     sqlx::query(query)
         .bind(email)
         .bind(&hashed_password)
-        .fetch_one(&mut **db)
+        .fetch_one(db)
         .await
 }
 
-async fn get_user(mut db: Connection<Db>, email: &str) -> Result<User, sqlx::Error> {
+async fn get_user(db: &mut PgConnection, email: &str) -> Result<User, sqlx::Error> {
     sqlx::query_as!(
         User,
         "SELECT id, email, password_hash FROM users WHERE email = $1",
         email,
     )
-    .fetch_one(&mut **db)
+    .fetch_one(db)
     .await
 }
 
@@ -63,8 +63,9 @@ async fn sign_up(cookies: &CookieJar<'_>) -> Template {
 }
 
 #[put("/sign_up", data = "<form>")]
-async fn register(db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
-    let result = create_user(db, &form.email, &form.password).await;
+async fn register(mut db: Connection<Db>, form: Form<UserRequest>) -> Redirect {
+    let pg_connection = &mut **db;
+    let result = create_user(pg_connection, &form.email, &form.password).await;
 
     match result {
         Ok(_) => Redirect::temporary(uri!("/users/sign_in")),
@@ -84,8 +85,14 @@ async fn sign_in(cookies: &CookieJar<'_>) -> Template {
 }
 
 #[put("/sign_in", data = "<form>")]
-async fn login(db: Connection<Db>, form: Form<UserRequest>, cookies: &CookieJar<'_>) -> Redirect {
-    if let Ok(user) = get_user(db, &form.email).await {
+async fn login(
+    mut db: Connection<Db>,
+    form: Form<UserRequest>,
+    cookies: &CookieJar<'_>,
+) -> Redirect {
+    let pg_connection = &mut **db;
+
+    if let Ok(user) = get_user(pg_connection, &form.email).await {
         if let Ok(true) = verify(&form.password, &user.password_hash) {
             let token = generate_jwt(&user.email);
             cookies.add_private(("jwt", token));
