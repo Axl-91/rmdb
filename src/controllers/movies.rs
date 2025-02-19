@@ -11,10 +11,10 @@ use sqlx::{
 use crate::{middleware::log_check::LoggedUser, Db};
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Movie {
+pub struct Movie {
     id: String,
-    name: Option<String>,
-    director: Option<String>,
+    name: String,
+    director: String,
     synopsis: Option<String>,
 }
 
@@ -37,7 +37,7 @@ async fn get_movies(db: &mut PgConnection) -> Vec<Movie> {
     .unwrap()
 }
 
-async fn get_movie(db: &mut PgConnection, id: Uuid) -> Result<Movie, sqlx::Error> {
+pub async fn get_movie(db: &mut PgConnection, id: Uuid) -> Result<Movie, sqlx::Error> {
     sqlx::query_as!(
         Movie,
         "SELECT id, name, director, synopsis FROM movies WHERE id = $1",
@@ -49,15 +49,13 @@ async fn get_movie(db: &mut PgConnection, id: Uuid) -> Result<Movie, sqlx::Error
 
 async fn create_movie(
     db: &mut PgConnection,
-    name: &str,
-    director: &str,
-    synopsis: &Option<String>,
+    form: Form<FormMovie>,
 ) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
         "INSERT INTO movies(name, director, synopsis) VALUES ($1, $2, $3)",
-        name,
-        director,
-        synopsis.as_deref()
+        &form.name,
+        &form.director,
+        form.synopsis.as_deref()
     )
     .execute(db)
     .await
@@ -65,32 +63,27 @@ async fn create_movie(
 
 async fn update_movie(
     db: &mut PgConnection,
-    id: &str,
-    name: &str,
-    director: &str,
-    synopsis: &Option<String>,
+    id: Uuid,
+    form: Form<FormMovie>,
 ) -> Result<PgQueryResult, sqlx::Error> {
-    let uuid = Uuid::parse_str(id).unwrap();
     let now = chrono::Utc::now().naive_utc();
 
     sqlx::query!(
         "UPDATE movies
         SET name = $1, director = $2, synopsis=$3, updated_at = $4
         WHERE id = $5",
-        name,
-        director,
-        synopsis.as_deref(),
+        &form.name,
+        &form.director,
+        form.synopsis.as_deref(),
         now,
-        uuid
+        id
     )
     .execute(db)
     .await
 }
 
-async fn delete_movie(db: &mut PgConnection, id: &str) -> Result<PgQueryResult, sqlx::Error> {
-    let uuid = Uuid::parse_str(id).unwrap();
-
-    sqlx::query!("DELETE FROM movies WHERE id = $1", uuid)
+async fn delete_movie(db: &mut PgConnection, id: Uuid) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query!("DELETE FROM movies WHERE id = $1", id)
         .execute(db)
         .await
 }
@@ -129,9 +122,8 @@ async fn create(
     cookies: &CookieJar<'_>,
 ) -> Redirect {
     let pg_connection = &mut **db;
-    let result = create_movie(pg_connection, &form.name, &form.director, &form.synopsis).await;
 
-    match result {
+    match create_movie(pg_connection, form).await {
         Ok(_) => cookies.add(("notice", "Movie created successfully")),
         Err(err) => cookies.add(("notice", format!("Failed to create movie: {:?}", err))),
     }
@@ -170,16 +162,9 @@ async fn update(
     cookies: &CookieJar<'_>,
 ) -> Redirect {
     let pg_connection = &mut **db;
+    let uuid = Uuid::parse_str(id).unwrap();
 
-    match update_movie(
-        pg_connection,
-        id,
-        &form.name,
-        &form.director,
-        &form.synopsis,
-    )
-    .await
-    {
+    match update_movie(pg_connection, uuid, form).await {
         Ok(_) => cookies.add(("notice", "Movie edited successfully")),
         Err(err) => cookies.add(("notice", format!("Failed to update movie: {:?}", err))),
     }
@@ -190,8 +175,9 @@ async fn update(
 #[delete("/<id>")]
 async fn delete(mut db: Connection<Db>, id: &str, cookies: &CookieJar<'_>) -> Redirect {
     let pg_connection = &mut **db;
+    let uuid = Uuid::parse_str(id).unwrap();
 
-    match delete_movie(pg_connection, id).await {
+    match delete_movie(pg_connection, uuid).await {
         Ok(_) => cookies.add(("notice", "Movie deleted successfully")),
         Err(err) => cookies.add(("notice", format!("Failed to delete movie: {:?}", err))),
     }

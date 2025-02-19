@@ -6,13 +6,15 @@
 	<div class="card-header">
 		<div class="row">
 			<h4 class="col-md-9 mt-1">
-				<strong> New Review </strong>
+				<strong> New Review: {{ movie.name }} </strong>
 			</h4>
 		</div>
 	</div>
 	<div class="card-body">
 		<form method="POST", action= "/reviews/create">
 			<input type="hidden" name="_method" value="PUT" />
+			<input type="hidden" name="user_id" value="{{ user_id }}" />
+			<input type="hidden" name="movie_id" value="{{ movie.id }}" />
 			{% include "reviews/form" %}
 		</form>
 	</div>

@@ -9,8 +9,8 @@
 		</ul>
 		<span class="navbar-text px-2">
 			{% if user_email %}
-				<form class="text-center" method="POST" action="/users/logout">
-					<a class="nav-link" href="#"> {{ user_email }} </a>
+				<form class="text-center d-flex align-items-center" method="POST" action="/users/logout">
+					<a class="nav-link px-2" href="#"> {{ user_email }} </a>
 					<input type="hidden" name="_method" value="delete" />
 					<button type="submit"> Log out </button>
 				</form>

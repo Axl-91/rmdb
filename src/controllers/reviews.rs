@@ -1,13 +1,13 @@
-use rocket::{fairing::AdHoc, form::Form};
+use rocket::{fairing::AdHoc, form::Form, http::CookieJar, response::Redirect};
 use rocket_db_pools::Connection;
 use rocket_dyn_templates::{context, Template};
 use serde::{Deserialize, Serialize};
-use sqlx::PgConnection;
+use sqlx::{postgres::PgQueryResult, PgConnection};
 use uuid::Uuid;
 
 use crate::{middleware::auth_check::AuthUser, Db};
 
-use super::users::get_user;
+use super::{movies::get_movie, users::get_user};
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Review {
@@ -19,7 +19,7 @@ struct Review {
 struct FormReview {
     user_id: String,
     movie_id: String,
-    score: String,
+    score: i32,
     review: Option<String>,
 }
 
@@ -36,22 +36,55 @@ async fn get_review(db: &mut PgConnection, id: Uuid) -> Review {
     .unwrap()
 }
 
+async fn create_review(
+    db: &mut PgConnection,
+    form: Form<FormReview>,
+) -> Result<PgQueryResult, sqlx::Error> {
+    let uuid_movie = Uuid::parse_str(&form.movie_id).unwrap();
+    let uuid_user = Uuid::parse_str(&form.user_id).unwrap();
+
+    sqlx::query!(
+        "INSERT INTO reviews(score, review, user_id, movie_id)
+            VALUES ($1, $2, $3, $4)",
+        form.score,
+        form.review.as_deref(),
+        uuid_user,
+        uuid_movie
+    )
+    .execute(db)
+    .await
+}
+
 // REQUEST FUNCTIONS
 
 #[get("/new/<movie_id>")]
 async fn new(mut db: Connection<Db>, movie_id: String, auth_user: AuthUser) -> Template {
     let pg_connection = &mut **db;
+    let uuid = Uuid::parse_str(&movie_id).unwrap();
+
     let user = get_user(pg_connection, &auth_user.email).await.unwrap();
+    let movie = get_movie(pg_connection, uuid).await.unwrap();
 
     Template::render(
         "reviews/new",
-        context! {movie_id: movie_id, user_id: user.id, user_email: user.email},
+        context! {movie: movie, user_id: user.id, user_email: user.email},
     )
 }
 
 #[put("/new", data = "<form>")]
-async fn create(form: Form<FormReview>) {
-    println!("{}", form.user_id);
+async fn create(
+    mut db: Connection<Db>,
+    form: Form<FormReview>,
+    cookies: &CookieJar<'_>,
+) -> Redirect {
+    let pg_connection = &mut **db;
+
+    match create_review(pg_connection, form).await {
+        Ok(_) => cookies.add(("notice", "Review submitted successfully")),
+        Err(err) => cookies.add(("notice", format!("Failed to submit review: {:?}", err))),
+    }
+
+    Redirect::to(uri!("/movies"))
 }
 
 #[get("/edit/<id>")]
