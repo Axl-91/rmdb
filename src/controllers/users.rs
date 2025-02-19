@@ -42,7 +42,7 @@ async fn create_user(
         .await
 }
 
-async fn get_user(db: &mut PgConnection, email: &str) -> Result<User, sqlx::Error> {
+pub async fn get_user(db: &mut PgConnection, email: &str) -> Result<User, sqlx::Error> {
     sqlx::query_as!(
         User,
         "SELECT id, email, password_hash FROM users WHERE email = $1",

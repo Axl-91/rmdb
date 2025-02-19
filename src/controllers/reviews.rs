@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgConnection;
 use uuid::Uuid;
 
-use crate::Db;
+use crate::{middleware::auth_check::AuthUser, Db};
+
+use super::users::get_user;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Review {
@@ -37,8 +39,14 @@ async fn get_review(db: &mut PgConnection, id: Uuid) -> Review {
 // REQUEST FUNCTIONS
 
 #[get("/new/<movie_id>")]
-async fn new(movie_id: String) -> Template {
-    Template::render("reviews/new", context! {movie_id: movie_id})
+async fn new(mut db: Connection<Db>, movie_id: String, auth_user: AuthUser) -> Template {
+    let pg_connection = &mut **db;
+    let user = get_user(pg_connection, &auth_user.email).await.unwrap();
+
+    Template::render(
+        "reviews/new",
+        context! {movie_id: movie_id, user_id: user.id},
+    )
 }
 
 #[put("/new", data = "<form>")]
