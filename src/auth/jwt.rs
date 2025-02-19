@@ -1,5 +1,7 @@
 use chrono::Utc;
-use jsonwebtoken::{encode, Algorithm, EncodingKey, Header};
+use jsonwebtoken::{
+    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, TokenData, Validation,
+};
 use serde::{Deserialize, Serialize};
 use std::env;
 
@@ -26,4 +28,13 @@ pub fn generate_jwt(user_email: &str) -> String {
     let encoding_key = EncodingKey::from_secret(jwt_secret.as_ref());
 
     encode(&Header::new(Algorithm::HS256), &claims, &encoding_key).expect("Error generating JWT")
+}
+
+pub fn decode_jwt(token: String) -> Result<TokenData<TokenClaims>, jsonwebtoken::errors::Error> {
+    let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET is required");
+
+    let decoding_key = DecodingKey::from_secret(jwt_secret.as_ref());
+    let validation = Validation::new(Algorithm::HS256);
+
+    decode::<TokenClaims>(&token, &decoding_key, &validation)
 }

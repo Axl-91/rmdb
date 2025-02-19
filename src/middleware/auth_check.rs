@@ -1,13 +1,9 @@
-use std::env;
-
-use jsonwebtoken::{decode, Algorithm};
-use jsonwebtoken::{DecodingKey, Validation};
 use rocket::http::Status;
 use rocket::outcome::Outcome;
 use rocket::request::FromRequest;
 use serde::Serialize;
 
-use crate::auth::jwt::TokenClaims;
+use crate::auth::jwt::decode_jwt;
 
 #[derive(Serialize)]
 pub struct AuthUser {
@@ -21,17 +17,10 @@ impl<'r> FromRequest<'r> for AuthUser {
     async fn from_request(
         req: &'r rocket::Request<'_>,
     ) -> rocket::request::Outcome<Self, Self::Error> {
-        if let Some(token) = req
-            .cookies()
-            .get_private("jwt")
-            .map(|n| n.value().to_string())
-        {
-            let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET is required");
+        let cookie = req.cookies().get_private("jwt");
 
-            let decoding_key = DecodingKey::from_secret(jwt_secret.as_ref());
-            let validation = Validation::new(Algorithm::HS256);
-
-            match decode::<TokenClaims>(&token, &decoding_key, &validation) {
+        if let Some(token) = cookie.map(|n| n.value().to_string()) {
+            match decode_jwt(token) {
                 Ok(token_data) => Outcome::Success(AuthUser {
                     email: token_data.claims.sub,
                 }),

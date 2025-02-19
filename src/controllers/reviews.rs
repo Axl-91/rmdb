@@ -45,7 +45,7 @@ async fn new(mut db: Connection<Db>, movie_id: String, auth_user: AuthUser) -> T
 
     Template::render(
         "reviews/new",
-        context! {movie_id: movie_id, user_id: user.id},
+        context! {movie_id: movie_id, user_id: user.id, user_email: user.email},
     )
 }
 
