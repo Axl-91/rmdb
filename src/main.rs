@@ -33,6 +33,8 @@ fn rocket() -> _ {
         .attach(Db::init())
         .attach(controllers::movies::stage())
         .attach(controllers::users::stage())
-        .mount("/", FileServer::from(relative!("templates")))
+        .attach(controllers::reviews::stage())
         .mount("/", routes![home])
+        .mount("/static", FileServer::from(relative!("static")))
+        .mount("/templates", FileServer::from(relative!("templates")))
 }

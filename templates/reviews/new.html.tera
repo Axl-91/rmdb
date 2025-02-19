@@ -1,0 +1,21 @@
+{% extends "layouts/base" %}
+
+{% block content %}	
+
+<div class="card mt-4">
+	<div class="card-header">
+		<div class="row">
+			<h4 class="col-md-9 mt-1">
+				<strong> New Review </strong>
+			</h4>
+		</div>
+	</div>
+	<div class="card-body">
+		<form method="POST", action= "/reviews/create">
+			<input type="hidden" name="_method" value="PUT" />
+			{% include "reviews/form" %}
+		</form>
+	</div>
+</div>
+{% endblock %}
+
