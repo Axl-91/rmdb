@@ -5,6 +5,7 @@ The idea of the project is to have a database with movies, and let users submit 
 
 Might add more features later...
 
+### Main objectives
 - [x] ~~Create DB~~
 - [x] ~~Create Home template~~
 - [x] ~~Add Movies to DB~~
@@ -14,9 +15,16 @@ Might add more features later...
 - [x] ~~Create auth for Users~~
 - [x] ~~Add templates for Users (Sign/login/logout)~~
 - [x] ~~Add Reviews to DB (user <--> movie)~~
-- [ ] Add template to review the movies
-- [ ] Show reviews on the movie template
-- [ ] Show Avg score for the movies
+- [x] ~~Add template to review the movies~~
+- [x] ~~Show reviews on the movie template~~
+- [x] ~~Show Avg score for the movies~~
+
+
+### Refactors
+- [ ] Better redirects
+- [ ] Creation of users
+- [ ] Front-end
+- [ ] Unwraps
 
 ### Instructions to run:
 
