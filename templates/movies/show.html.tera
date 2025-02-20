@@ -3,17 +3,16 @@
 {% block content %}
 	<div class="px-5 py-5 mt-3 bg-body-tertiary border rounded-3 text-center">
 		<h1>{{ movie.name }}</h1>
-		<h4> Directed by: {{ movie.director }} </h4>
-		<h4> Avg Score: -  <h4>
+		<h4 class="text-decoration-underline"> Directed by: {{ movie.director }} </h4>
+		<h4> Avg Score: {% if avg_score %} {{ avg_score }} {% else %} - {% endif %}  <h4>
 		{% if movie.synopsis %}
-			</br>
 			<h4> Synopsis: <h4>
-			<p> {{movie.synopsis}} </p>
+			<p class="card-body bg-white border rounded-3 py-2"> {{movie.synopsis}} </p>
 		{% endif %}
 	</div>
 	{% if not has_review and user_email %}
 		<div class="d-flex justify-content-end">
-			<button class="mt-4 btn btn-primary"> Submit your review </button>
+			<a class="mt-4 btn btn-primary" href="/reviews/new/{{ movie.id }}"> Submit your review </a>
 		</div>
 	{% endif %}
 	<div class="container mt-1 bg-success-subtle border py-3 rounded-3">
@@ -22,7 +21,15 @@
 		{% for review in reviews %}
 			<div class="card mb-3">
 				<div class="card-body">
-					<h5 class="card-title">{{ review.email }}</h5>
+					<div class="d-flex justify-content-between align-items-center">
+						<h5 class="card-title">{{ review.email }}</h5>
+						{% if review.email == user_email %}
+						<form class="justify-content-end" method="POST" action="/reviews/delete/{{ review.id }}" >
+							<input type="hidden" name="_method" value="delete" />
+							<button type="submit" class="mb-1 btn btn-danger" > Delete your review </button>
+						</form>
+						{% endif %}
+					</div>
 					<p class="card-text">{{ review.review }}</p> 
 					<p class="card-text"><small class="text-muted">Rating: {{ review.score }} / 10</small></p>
 				</div>

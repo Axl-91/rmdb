@@ -140,6 +140,14 @@ async fn show(mut db: Connection<Db>, id: String, logged_user: LoggedUser) -> Te
 
     let movie = get_movie(pg_connection, uuid).await.unwrap();
     let reviews = get_reviews_from_movie(pg_connection, uuid).await;
+    let count_reviews = reviews.clone().len();
+    let avg_score = if count_reviews > 0 {
+        let total_score = reviews.clone().into_iter().fold(0, |acc, r| acc + r.score);
+        let avg = total_score as f32 / (count_reviews as f32);
+        Some(format!("{:.2}", avg))
+    } else {
+        None
+    };
     let has_review = if let Some(user_email) = logged_user.email.clone() {
         reviews.clone().into_iter().any(|r| r.email == user_email)
     } else {
@@ -148,7 +156,7 @@ async fn show(mut db: Connection<Db>, id: String, logged_user: LoggedUser) -> Te
 
     Template::render(
         "movies/show",
-        context! {movie: movie, reviews: reviews, has_review: has_review, user_email: logged_user.email},
+        context! {movie: movie, reviews: reviews, avg_score: avg_score, has_review: has_review, user_email: logged_user.email},
     )
 }
 

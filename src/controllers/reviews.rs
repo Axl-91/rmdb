@@ -11,8 +11,9 @@ use super::{movies::get_movie, users::get_user};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserReview {
+    id: String,
     pub email: String,
-    score: i32,
+    pub score: i32,
     review: Option<String>,
 }
 
@@ -29,7 +30,7 @@ struct FormReview {
 pub async fn get_reviews_from_movie(db: &mut PgConnection, id: Uuid) -> Vec<UserReview> {
     sqlx::query_as!(
         UserReview,
-        "SELECT u.email, r.score, r.review FROM reviews r JOIN users u ON u.id = r.user_id WHERE r.movie_id = $1",
+        "SELECT r.id, u.email, r.score, r.review FROM reviews r JOIN users u ON u.id = r.user_id WHERE r.movie_id = $1",
         id
     )
     .fetch_all(db)
