@@ -10,6 +10,8 @@ use sqlx::{
 
 use crate::{middleware::log_check::LoggedUser, Db};
 
+use super::reviews::get_reviews_from_movie;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Movie {
     id: String,
@@ -132,13 +134,22 @@ async fn create(
 }
 
 #[get("/<id>")]
-async fn show(mut db: Connection<Db>, id: String) -> Template {
+async fn show(mut db: Connection<Db>, id: String, logged_user: LoggedUser) -> Template {
     let pg_connection = &mut **db;
     let uuid = Uuid::parse_str(&id).unwrap();
 
     let movie = get_movie(pg_connection, uuid).await.unwrap();
+    let reviews = get_reviews_from_movie(pg_connection, uuid).await;
+    let has_review = if let Some(user_email) = logged_user.email.clone() {
+        reviews.clone().into_iter().any(|r| r.email == user_email)
+    } else {
+        false
+    };
 
-    Template::render("movies/show", context! {movie: movie})
+    Template::render(
+        "movies/show",
+        context! {movie: movie, reviews: reviews, has_review: has_review, user_email: logged_user.email},
+    )
 }
 
 #[get("/edit/<id>")]

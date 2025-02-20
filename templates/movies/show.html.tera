@@ -11,5 +11,25 @@
 			<p> {{movie.synopsis}} </p>
 		{% endif %}
 	</div>
+	{% if not has_review and user_email %}
+		<div class="d-flex justify-content-end">
+			<button class="mt-4 btn btn-primary"> Submit your review </button>
+		</div>
+	{% endif %}
+	<div class="container mt-1 bg-success-subtle border py-3 rounded-3">
+		<h3>Reviews:</h3>
+
+		{% for review in reviews %}
+			<div class="card mb-3">
+				<div class="card-body">
+					<h5 class="card-title">{{ review.email }}</h5>
+					<p class="card-text">{{ review.review }}</p> 
+					<p class="card-text"><small class="text-muted">Rating: {{ review.score }} / 10</small></p>
+				</div>
+			</div>
+		{% else %}
+			<p>No reviews yet. Be the first to share your thoughts!</p>
+		{% endfor %}
+	</div>
 {% endblock %}
 

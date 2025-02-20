@@ -11,7 +11,7 @@
 		</div>
 	</div>
 	<div class="card-body">
-		<form method="POST", action= "/reviews/create">
+		<form method="POST", action= "/reviews/new">
 			<input type="hidden" name="_method" value="PUT" />
 			<input type="hidden" name="user_id" value="{{ user_id }}" />
 			<input type="hidden" name="movie_id" value="{{ movie.id }}" />

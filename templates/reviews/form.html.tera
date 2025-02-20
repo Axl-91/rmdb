@@ -1,11 +1,11 @@
 <div class="mt-2">
 	<label for="scoreRange" class="form-label">Score: </label>
-    <input type="range" class="form-range" min="0" max="10" id="scoreRange">
+    <input name="score" type="range" class="form-range" min="0" max="10" id="scoreRange">
     <p>Value: <span id="scoreValue">{% if review %} {{ review.score }} {% else %} 5 {% endif %}</span></p>
 </div>
 <div class="mt-2">
 	<label class="form-label">Review:</label>
-	<textarea name="synopsis" class="form-control">{% if review %} {{review.review}} {% endif %}</textarea>
+	<textarea name="review" class="form-control">{% if review %} {{review.review}} {% endif %}</textarea>
 </div>
 <div class="mt-4">
 	<button class="btn btn-success">Submit</button>

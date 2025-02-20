@@ -9,8 +9,9 @@ use crate::{middleware::auth_check::AuthUser, Db};
 
 use super::{movies::get_movie, users::get_user};
 
-#[derive(Debug, Serialize, Deserialize)]
-struct Review {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserReview {
+    pub email: String,
     score: i32,
     review: Option<String>,
 }
@@ -25,15 +26,21 @@ struct FormReview {
 
 // DB FUNCTIONS
 
-async fn get_review(db: &mut PgConnection, id: Uuid) -> Review {
+pub async fn get_reviews_from_movie(db: &mut PgConnection, id: Uuid) -> Vec<UserReview> {
     sqlx::query_as!(
-        Review,
-        "SELECT score, review FROM reviews WHERE id = $1",
+        UserReview,
+        "SELECT u.email, r.score, r.review FROM reviews r JOIN users u ON u.id = r.user_id WHERE r.movie_id = $1",
         id
     )
-    .fetch_one(db)
+    .fetch_all(db)
     .await
     .unwrap()
+}
+
+async fn delete_review(db: &mut PgConnection, id: Uuid) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query!("DELETE FROM reviews WHERE id = $1", id)
+        .execute(db)
+        .await
 }
 
 async fn create_review(
@@ -87,27 +94,35 @@ async fn create(
     Redirect::to(uri!("/movies"))
 }
 
-#[get("/edit/<id>")]
-async fn edit(mut db: Connection<Db>, id: String) -> Template {
+// #[get("/edit/<id>")]
+// async fn edit(mut db: Connection<Db>, id: String) -> Template {
+//     let pg_connection = &mut **db;
+//     let uuid = Uuid::parse_str(&id).unwrap();
+
+//     let review = get_review(pg_connection, uuid).await;
+//     Template::render("reviews/edit", context! {review: review})
+// }
+
+// #[put("/edit/<id>")]
+// async fn update(id: String) {
+//     println!("{}", id);
+// }
+
+#[delete("/delete/<id>")]
+async fn delete(mut db: Connection<Db>, id: String, cookies: &CookieJar<'_>) -> Redirect {
     let pg_connection = &mut **db;
     let uuid = Uuid::parse_str(&id).unwrap();
 
-    let review = get_review(pg_connection, uuid).await;
-    Template::render("reviews/edit", context! {review: review})
-}
+    match delete_review(pg_connection, uuid).await {
+        Ok(_) => cookies.add(("notice", "Review deleted successfully")),
+        Err(err) => cookies.add(("notice", format!("Failed to delete review: {:?}", err))),
+    }
 
-#[put("/edit/<id>")]
-async fn update(id: String) {
-    println!("{}", id);
-}
-
-#[delete("/delete/<id>")]
-async fn delete(id: String) {
-    println!("{}", id);
+    Redirect::to("/movies")
 }
 
 pub fn stage() -> AdHoc {
     AdHoc::on_ignite("Reviews Stage", |rocket| async {
-        rocket.mount("/reviews", routes![new, create, edit, update, delete])
+        rocket.mount("/reviews", routes![new, create, delete])
     })
 }
